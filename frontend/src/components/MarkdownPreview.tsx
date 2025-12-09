@@ -19,7 +19,7 @@ export function MarkdownPreview({
           </div>
         )}
         <div className="px-4">
-          <ConvertMarkdown content={content} inEditor />
+          <ConvertMarkdown content={content} />
         </div>
       </div>
     </div>
