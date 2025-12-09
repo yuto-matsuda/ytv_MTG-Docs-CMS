@@ -18,7 +18,7 @@ imagesRoutes.get('/', async (c) => {
       .select('id, storage_path')
       .eq('uploaded_by', user_uuid)
       .order('created_at', { ascending: false });
-// console.log('dbError:', dbError)
+console.log('dbError:', dbError)
   if (dbError) return c.json({ error: dbError.message }, 500);
   if (images.length === 0) return c.json([]);
 
@@ -28,7 +28,7 @@ imagesRoutes.get('/', async (c) => {
       const { data, error } = await supabase.storage
         .from("cms_storage")
         .createSignedUrl(img.storage_path, urlExpiration);
-// console.log('storageError:', error)
+console.log('storageError:', error)
       if (error || !data) storageError = true;
 
       return { id: img.id, path: img.storage_path, url: data!.signedUrl };
