@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import pLimit from 'p-limit';
 import { getUserFromAuthHeader, isAdmin, isMember } from "../lib/auth";
 import { getSupabaseClient, getSupabaseStorageUsage } from "../lib/supabase";
 
@@ -23,7 +22,13 @@ console.log('dbError:', dbError)
   if (dbError) return c.json({ error: dbError.message }, 500);
   if (images.length === 0) return c.json([]);
 
-  let storageError = false;
+  const { data: list, error: listError } = await supabase.storage
+    .from('cms_storage')
+    .list(user_uuid);
+
+  if (listError) return c.json({ error: listError.message }, 500);
+
+  // let storageError = false;
 //   const results = await Promise.all(
 //     images.map(async (img) => {
 //       const { data, error } = await supabase.storage
@@ -35,21 +40,42 @@ console.log('dbError:', dbError)
 //       return { id: img.id, path: img.storage_path, url: data!.signedUrl };
 //     })
 //   );
-  const limit = pLimit(45); // 一度に実行する並行処理を45に制限
 
-  const results = await Promise.all(
-    images.map((img) => limit(async () => {
-      const { data, error } = await supabase.storage
-        .from("cms_storage")
-        .createSignedUrl(img.storage_path, urlExpiration);
-      console.log('storageError:', error)
-      if (error || !data) storageError = true;
 
-      return { id: img.id, path: img.storage_path, url: data!.signedUrl };
-    }))
-  );
+  // const limit = pLimit(45); // 一度に実行する並行処理を45に制限
+
+  // const results = await Promise.all(
+  //   images.map((img) => limit(async () => {
+  //     const { data, error } = await supabase.storage
+  //       .from("cms_storage")
+  //       .createSignedUrl(img.storage_path, urlExpiration);
+  //     console.log('storageError:', error)
+  //     if (error || !data) storageError = true;
+
+  //     return { id: img.id, path: img.storage_path, url: data!.signedUrl };
+  //   }))
+  // );
+
+
+  const results = images.map(img => {
+    const { data } = supabase.storage
+      .from("cms_storage")
+      .getPublicUrl(img.storage_path);
+      
+    if (!data || !data.publicUrl) {
+        console.error(`Failed to generate public URL for: ${img.storage_path}`);
+        return null;
+    }
+
+    return { 
+        id: img.id,
+        path: img.storage_path, 
+        url: data.publicUrl
+    };
+  }).filter(item => item !== null);
+
   
-  if (storageError) return c.json({ error: 'Upload error' }, 500);
+  // if (storageError) return c.json({ error: 'Upload error' }, 500);
 
   return c.json(results);
 });
