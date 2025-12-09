@@ -1,0 +1,6 @@
+name = "mtg-docs-cms_backend"
+type = "javascript"
+
+[dev]
+# LocalVarsFile を指定することで、.dev.varsから変数が読み込まれます
+local_vars_file = ".dev.vars"
