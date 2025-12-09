@@ -2,7 +2,18 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mtg-docs-cms_backend",
   "main": "src/index.ts",
-  "compatibility_date": "2025-11-18"
+  "compatibility_date": "2025-11-18",
+
+  
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    }
+  }
+
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
