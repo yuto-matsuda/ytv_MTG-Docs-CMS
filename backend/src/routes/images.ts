@@ -41,22 +41,6 @@ console.log('dbError:', dbError)
 //     })
 //   );
 
-
-  // const limit = pLimit(45); // 一度に実行する並行処理を45に制限
-
-  // const results = await Promise.all(
-  //   images.map((img) => limit(async () => {
-  //     const { data, error } = await supabase.storage
-  //       .from("cms_storage")
-  //       .createSignedUrl(img.storage_path, urlExpiration);
-  //     console.log('storageError:', error)
-  //     if (error || !data) storageError = true;
-
-  //     return { id: img.id, path: img.storage_path, url: data!.signedUrl };
-  //   }))
-  // );
-
-
   const results = images.map(img => {
     const { data } = supabase.storage
       .from("cms_storage")
@@ -73,7 +57,6 @@ console.log('dbError:', dbError)
         url: data.publicUrl
     };
   }).filter(item => item !== null);
-
   
   // if (storageError) return c.json({ error: 'Upload error' }, 500);
 
@@ -123,11 +106,13 @@ imagesRoutes.post('/', async (c) => {
 // console.log('uploadError:', uploadError)
     if (uploadError) return c.json({ error: uploadError.message }, 500);
 
-    const { data: storageData, error: storageError } = await supabase.storage
+    // const { data: storageData, error: storageError } = await supabase.storage
+    const { data: storageData } = supabase.storage
       .from('cms_storage')
-      .createSignedUrl(storagePath, urlExpiration);
+      // .createSignedUrl(storagePath, urlExpiration);
+      .getPublicUrl(storagePath);
 // console.log('storageError:', storageError)
-    if (storageError) return c.json({ error: storageError.message }, 500);
+    // if (storageError) return c.json({ error: storageError.message }, 500);
 
     const { data: dbData, error: dbError } = await supabase
       .from('images')
@@ -141,7 +126,8 @@ imagesRoutes.post('/', async (c) => {
 // console.log('dbError:', dbError)
     if (dbError) return c.json({ error: dbError.message }, 500);
 
-    results.push({ id: dbData.id, path: storagePath, url: storageData.signedUrl });
+    // results.push({ id: dbData.id, path: storagePath, url: storageData.signedUrl });
+    results.push({ id: dbData.id, path: storagePath, url: storageData.publicUrl });
   }
 
   return c.json(results);
@@ -177,13 +163,17 @@ imagesRoutes.get('/:path', async (c) => {
   if (dbError) return c.json({ error: dbError.message }, 500);
   if (!image) return c.json({ error: "Image not found" }, 404);
 
-  const { data, error } = await supabase.storage
+  // const { data, error } = await supabase.storage
+  const { data } = supabase.storage
     .from("cms_storage")
-    .createSignedUrl(image.storage_path, urlExpiration);
+    // .createSignedUrl(image.storage_path, urlExpiration);
+    .getPublicUrl(image.storage_path)
 // console.log('storageError:', error)
-  if (error || !data) return c.json({ error: error.message }, 500);
+  // if (error || !data) return c.json({ error: error.message }, 500);
+  if (!data) return c.json({ error: 'Storage Error' }, 500);
 
-  return c.json({ id: image.id, path: image.storage_path, url: data.signedUrl });
+  // return c.json({ id: image.id, path: image.storage_path, url: data.signedUrl });
+  return c.json({ id: image.id, path: image.storage_path, url: data.publicUrl });
 });
 
 imagesRoutes.put('/:id', async (c) => {
@@ -262,13 +252,16 @@ console.log('removeError:', removeError)
 console.log('dbError:', dbError)
   if (dbError) return c.json({ error: dbError.message }, 500);
 
-  const { data: storageData, error: storageError } = await supabase.storage
+  // const { data: storageData, error: storageError } = await supabase.storage
+  const { data: storageData } = supabase.storage
     .from("cms_storage")
-    .createSignedUrl(newPath, urlExpiration);
-console.log('storageError:', storageError)
-  if (storageError) return c.json({ error: storageError.message }, 500);
+    // .createSignedUrl(newPath, urlExpiration);
+    .getPublicUrl(newPath);
+// console.log('storageError:', storageError)
+  // if (storageError) return c.json({ error: storageError.message }, 500);
 
-  return c.json({ id, path: newPath, url: storageData.signedUrl });
+  // return c.json({ id, path: newPath, url: storageData.signedUrl });
+  return c.json({ id, path: newPath, url: storageData.publicUrl });
 });
 
 imagesRoutes.delete('/:id', async (c) => {
