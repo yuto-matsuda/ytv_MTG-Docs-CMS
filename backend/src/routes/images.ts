@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import pLimit from 'p-limit';
 import { getUserFromAuthHeader, isAdmin, isMember } from "../lib/auth";
 import { getSupabaseClient, getSupabaseStorageUsage } from "../lib/supabase";
 
@@ -14,25 +15,38 @@ imagesRoutes.get('/', async (c) => {
 
   const supabase = getSupabaseClient(c.env);
   const { data: images, error: dbError } = await supabase
-      .from('images')
-      .select('id, storage_path')
-      .eq('uploaded_by', user_uuid)
-      .order('created_at', { ascending: false });
+    .from('images')
+    .select('id, storage_path')
+    .eq('uploaded_by', user_uuid)
+    .order('created_at', { ascending: false });
 console.log('dbError:', dbError)
   if (dbError) return c.json({ error: dbError.message }, 500);
   if (images.length === 0) return c.json([]);
 
   let storageError = false;
+//   const results = await Promise.all(
+//     images.map(async (img) => {
+//       const { data, error } = await supabase.storage
+//         .from("cms_storage")
+//         .createSignedUrl(img.storage_path, urlExpiration);
+// console.log('storageError:', error)
+//       if (error || !data) storageError = true;
+
+//       return { id: img.id, path: img.storage_path, url: data!.signedUrl };
+//     })
+//   );
+  const limit = pLimit(45); // 一度に実行する並行処理を45に制限
+
   const results = await Promise.all(
-    images.map(async (img) => {
+    images.map((img) => limit(async () => {
       const { data, error } = await supabase.storage
         .from("cms_storage")
         .createSignedUrl(img.storage_path, urlExpiration);
-console.log('storageError:', error)
+      console.log('storageError:', error)
       if (error || !data) storageError = true;
 
       return { id: img.id, path: img.storage_path, url: data!.signedUrl };
-    })
+    }))
   );
   
   if (storageError) return c.json({ error: 'Upload error' }, 500);
